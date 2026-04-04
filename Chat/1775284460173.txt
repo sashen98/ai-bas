@@ -1,6 +1,0 @@
-[2026-04-04T06:34:55.466Z] USER: Hello, this is a test message.
------------------------------------
-
-[2026-04-04T06:34:57.945Z] AI: Sorry, I encountered an error connecting to the AI. Please try again.
------------------------------------
-

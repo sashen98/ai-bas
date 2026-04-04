@@ -1,6 +1,0 @@
-[2026-04-04T06:41:07.377Z] USER: Final verification test.
------------------------------------
-
-[2026-04-04T06:41:09.460Z] AI: Sorry, I encountered an error connecting to the AI. Please try again.
------------------------------------
-

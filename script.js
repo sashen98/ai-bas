@@ -1,6 +1,21 @@
-// To enable logging from your GitHub-hosted site, replace 'window.location.origin' 
-// with your Ngrok public URL (e.g., 'https://your-tunnel.ngrok-free.app')
-const LOG_SERVER_URL = window.location.origin; 
+// Configure Remote Logging (GitHub Support)
+let LOG_SERVER_URL = window.location.origin; 
+
+// Initial GitHub/Remote check
+if (window.location.hostname.includes('github.io')) {
+    const savedUrl = localStorage.getItem('nexus_remote_url');
+    if (savedUrl) {
+        LOG_SERVER_URL = savedUrl;
+        console.log("Nexus AI: Remote logging active at " + LOG_SERVER_URL);
+    } else {
+        const url = prompt("Nexus AI - Remote Logging Setup:\n\nTo save chats to your local machine from GitHub, please enter your Ngrok Public URL (e.g., https://your-id.ngrok-free.app)\n\nIf you don't have one, leave this blank.", "");
+        if (url && url.startsWith('http')) {
+            LOG_SERVER_URL = url;
+            localStorage.setItem('nexus_remote_url', url);
+            alert("Success! Your chats will now be saved locally.");
+        }
+    }
+}
 
 async function logChatToServer(sessionId, role, content) {
     try {
@@ -124,13 +139,15 @@ const getGeminiResponse = async (prompt) => {
         });
         
         if (!response.ok) {
-            console.error("API response error:", response.status);
+            const errorData = await response.json().catch(() => ({}));
+            console.error("API response error:", response.status, errorData);
+            
             if (response.status === 403) {
                 return "⚠️ API Error 403: Forbidden. Your API Key may be invalid or unauthorized for this model. Please check Google AI Studio.";
             } else if (response.status === 404) {
                 return "⚠️ API Error 404: Not Found. The model endpoint is unavailable. Try switching from 'v1' to 'v1beta' in script.js line 109.";
             }
-            return `Sorry, I encountered an error (HTTP ${response.status}). Please check your API key and network.`;
+            return `Sorry, I encountered an error (HTTP ${response.status}). Response: ${JSON.stringify(errorData.error?.message || errorData)}`;
         }
         
         const data = await response.json();

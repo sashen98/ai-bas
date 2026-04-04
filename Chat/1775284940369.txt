@@ -1,6 +1,0 @@
-[2026-04-04T06:42:37.164Z] USER: What is the capital of France?
------------------------------------
-
-[2026-04-04T06:42:39.590Z] AI: Sorry, I encountered an error connecting to the AI. Please try again.
------------------------------------
-

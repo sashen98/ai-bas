@@ -35,7 +35,7 @@ while ($listener.IsListening) {
             $logLine = "[$($data.timestamp)] $($data.role.ToUpper()): $($data.content)`r`n"
             $logLine += "-----------------------------------`r`n"
             
-            Add-Content -Path $sessionFile -Value $logLine
+            Add-Content -Path $sessionFile -Value $logLine -Encoding UTF8
             
             $response.StatusCode = 200
             $buffer = [System.Text.Encoding]::UTF8.GetBytes("Logged")
