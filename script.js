@@ -14,15 +14,43 @@ const authError = document.getElementById('auth-error');
 const signoutBtn = document.getElementById('signout-btn');
 
 let isLoginMode = true;
+let memoryUser = null;
+let memoryUsers = {};
+
+function getActiveUser() {
+    try { return localStorage.getItem('nexus_user') || memoryUser; } 
+    catch { return memoryUser; }
+}
+
+function setActiveUser(email) {
+    try { localStorage.setItem('nexus_user', email); } 
+    catch { memoryUser = email; }
+}
+
+function clearActiveUser() {
+    try { localStorage.removeItem('nexus_user'); } 
+    catch { memoryUser = null; }
+}
+
+function getUsers() {
+    try { return JSON.parse(localStorage.getItem('nexus_users')) || memoryUsers; } 
+    catch { return memoryUsers; }
+}
+
+function setUsers(u) {
+    try { localStorage.setItem('nexus_users', JSON.stringify(u)); } 
+    catch { memoryUsers = u; }
+}
 
 // Check if user is already logged in
-if (localStorage.getItem('nexus_user')) {
+if (getActiveUser()) {
     authScreen.style.display = 'none';
 }
 
 switchAuthMode.addEventListener('click', () => {
     isLoginMode = !isLoginMode;
     authError.textContent = '';
+    authForm.reset();
     if (isLoginMode) {
         authTitle.textContent = 'Welcome to Nexus AI';
         authSubtitle.textContent = 'Login to access the premium chat experience.';
@@ -38,45 +66,73 @@ switchAuthMode.addEventListener('click', () => {
     }
 });
 
+function loginSuccess() {
+    authForm.reset();
+    authScreen.style.opacity = '0';
+    setTimeout(() => {
+        authScreen.style.display = 'none';
+        
+        // Reset chat UI
+        messagesContainer.innerHTML = `
+            <div class="welcome-screen" id="welcome-screen">
+                <h1>How can I help you today?</h1>
+                <p>Enter a prompt below and watch the magic unfold.</p>
+            </div>`;
+        renderHistory();
+        
+        // Update avatars if needed
+        document.querySelectorAll('.user .avatar').forEach(updateAvatar);
+    }, 500);
+}
+
+function updateAvatar(element) {
+    if (getActiveUser() === 'sashensandamith@gmail.com') {
+        element.innerHTML = `<img src="avatar.png" alt="Profile" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        element.style.background = 'none';
+        element.style.border = 'none';
+    } else {
+        // Reset to default SVG for other users
+        element.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+        element.style.background = 'var(--glass-bg)';
+        element.style.border = '1px solid var(--glass-border)';
+    }
+}
+
 authForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = authEmail.value.trim();
     const password = authPassword.value.trim();
     authError.textContent = '';
 
-    const users = JSON.parse(localStorage.getItem('nexus_users')) || {};
+    const users = getUsers();
 
     if (isLoginMode) {
-        // Login Logic
         if (users[email] && users[email].password === password) {
-            localStorage.setItem('nexus_user', email);
-            authScreen.style.opacity = '0';
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
+            setActiveUser(email);
+            loginSuccess();
         } else {
             authError.textContent = 'Invalid email or password.';
         }
     } else {
-        // Sign Up Logic
         if (users[email]) {
             authError.textContent = 'Account already exists. Please login.';
         } else {
             users[email] = { password };
-            localStorage.setItem('nexus_users', JSON.stringify(users));
-            localStorage.setItem('nexus_user', email);
-            authScreen.style.opacity = '0';
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
+            setUsers(users);
+            setActiveUser(email);
+            loginSuccess();
         }
     }
 });
 
 if (signoutBtn) {
     signoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('nexus_user');
-        window.location.reload();
+        clearActiveUser();
+        currentSession = Date.now().toString();
+        // Show auth screen again smoothly without reload
+        authScreen.style.display = 'flex';
+        setTimeout(() => authScreen.style.opacity = '1', 10);
+        authForm.reset();
     });
 }
 
@@ -200,6 +256,10 @@ function appendMessage(role, text, animate = false) {
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
     avatar.innerHTML = role === 'user' ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` : 'N';
+    
+    if (role === 'user') {
+        updateAvatar(avatar);
+    }
     
     // Content box
     const content = document.createElement('div');

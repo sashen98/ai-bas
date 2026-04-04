@@ -461,6 +461,21 @@ textarea::placeholder {
     cursor: not-allowed;
 }
 
+.secret-link {
+    margin-top: auto;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+    text-decoration: none;
+    opacity: 0.05;
+    transition: opacity 0.3s;
+    cursor: pointer;
+}
+
+.secret-link:hover {
+    opacity: 0.5;
+}
+
 /* ==================================
    Authentication Screen
 =================================== */
