@@ -1,0 +1,6 @@
+[2026-04-04T06:44:56.588Z] USER: hi
+-----------------------------------
+
+[2026-04-04T06:44:58.697Z] AI: Sorry, I encountered an error connecting to the AI. Please try again.
+-----------------------------------
+
