@@ -1,4 +1,73 @@
 // ==========================================
+// Authentication System Logic
+// ==========================================
+const authScreen = document.getElementById('auth-screen');
+const authForm = document.getElementById('auth-form');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const switchAuthMode = document.getElementById('switch-auth-mode');
+const authBtn = document.getElementById('auth-btn');
+const authTitle = document.getElementById('auth-title');
+const authSubtitle = document.getElementById('auth-subtitle');
+const authError = document.getElementById('auth-error');
+
+let isLoginMode = true;
+
+// Check if user is already logged in
+if (localStorage.getItem('nexus_user')) {
+    authScreen.style.display = 'none';
+}
+
+switchAuthMode.addEventListener('click', () => {
+    isLoginMode = !isLoginMode;
+    authError.textContent = '';
+    if (isLoginMode) {
+        authTitle.textContent = 'Welcome to Nexus AI';
+        authSubtitle.textContent = 'Login to access the premium chat experience.';
+        authBtn.textContent = 'Login';
+        switchAuthMode.textContent = 'Sign up';
+        switchAuthMode.parentElement.childNodes[0].textContent = "Don't have an account? ";
+    } else {
+        authTitle.textContent = 'Create Account';
+        authSubtitle.textContent = 'Join Nexus AI to start chatting.';
+        authBtn.textContent = 'Sign Up';
+        switchAuthMode.textContent = 'Login';
+        switchAuthMode.parentElement.childNodes[0].textContent = "Already have an account? ";
+    }
+});
+
+authForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = authEmail.value.trim();
+    const password = authPassword.value.trim();
+    authError.textContent = '';
+
+    const users = JSON.parse(localStorage.getItem('nexus_users')) || {};
+
+    if (isLoginMode) {
+        // Login Logic
+        if (users[email] && users[email].password === password) {
+            localStorage.setItem('nexus_user', email);
+            authScreen.style.opacity = '0';
+            setTimeout(() => authScreen.style.display = 'none', 500);
+        } else {
+            authError.textContent = 'Invalid email or password.';
+        }
+    } else {
+        // Sign Up Logic
+        if (users[email]) {
+            authError.textContent = 'Account already exists. Please login.';
+        } else {
+            users[email] = { password };
+            localStorage.setItem('nexus_users', JSON.stringify(users));
+            localStorage.setItem('nexus_user', email);
+            authScreen.style.opacity = '0';
+            setTimeout(() => authScreen.style.display = 'none', 500);
+        }
+    }
+});
+
+// ==========================================
 // Custom Cursor Logic
 // ==========================================
 const cursorDot = document.getElementById('cursor-dot');
@@ -33,7 +102,7 @@ function animateCursor() {
 animateCursor();
 
 // Add hover effects for cursor
-const hoverElements = document.querySelectorAll('button, a, textarea, .history li');
+const hoverElements = document.querySelectorAll('button, a, textarea, .history li, input, span');
 hoverElements.forEach(el => {
     el.addEventListener('mouseenter', () => cursorRing.classList.add('active'));
     el.addEventListener('mouseleave', () => cursorRing.classList.remove('active'));
