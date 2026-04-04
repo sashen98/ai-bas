@@ -116,6 +116,19 @@ promptInput.addEventListener('keydown', function(e) {
     }
 });
 
+// Helper to discover what models your key actually supports
+const listAvailableModels = async () => {
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`);
+        const data = await res.json();
+        console.log("Nexus AI - Available Models for your Key:", data.models?.map(m => m.name));
+        return data.models?.map(m => m.name) || [];
+    } catch (e) {
+        console.error("Nexus AI - Failed to list models:", e);
+        return [];
+    }
+};
+
 // Real Google Gemini API Logic
 const getGeminiResponse = async (prompt) => {
     if (!geminiApiKey) {
@@ -143,9 +156,11 @@ const getGeminiResponse = async (prompt) => {
             console.error("API response error:", response.status, errorData);
             
             if (response.status === 403) {
+                await listAvailableModels();
                 return "⚠️ API Error 403: Forbidden. Your API Key may be invalid or unauthorized for this model. Please check Google AI Studio.";
             } else if (response.status === 404) {
-                return "⚠️ API Error 404: Not Found. The model endpoint is unavailable. Try switching from 'v1' to 'v1beta' in script.js line 109.";
+                const available = await listAvailableModels();
+                return `⚠️ API Error 404: Not Found. The model endpoint is unavailable. \n\nAvailable models for your key: ${available.slice(0,3).join(', ')}... (check F12 Console for full list)`;
             }
             return `Sorry, I encountered an error (HTTP ${response.status}). Response: ${JSON.stringify(errorData.error?.message || errorData)}`;
         }

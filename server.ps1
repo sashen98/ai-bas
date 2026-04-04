@@ -27,7 +27,7 @@ while ($listener.IsListening) {
         }
 
         if ($request.Url.LocalPath -eq "/log" -and $request.HttpMethod -eq "POST") {
-            $reader = New-Object System.IO.StreamReader($request.InputStream)
+            $reader = New-Object System.IO.StreamReader($request.InputStream, [System.Text.Encoding]::UTF8)
             $body = $reader.ReadToEnd()
             $data = $body | ConvertFrom-Json
             
@@ -35,7 +35,7 @@ while ($listener.IsListening) {
             $logLine = "[$($data.timestamp)] $($data.role.ToUpper()): $($data.content)`r`n"
             $logLine += "-----------------------------------`r`n"
             
-            Add-Content -Path $sessionFile -Value $logLine -Encoding UTF8
+            [System.IO.File]::AppendAllText($sessionFile, $logLine, [System.Text.Encoding]::UTF8)
             
             $response.StatusCode = 200
             $buffer = [System.Text.Encoding]::UTF8.GetBytes("Logged")
