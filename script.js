@@ -135,7 +135,7 @@ const getGeminiResponse = async (prompt) => {
         return "⚠️ I need a Google Gemini API Key to work!\n\nPlease generate a free Gemini API Key from Google AI Studio and enter it in the 'Google Gemini API Key...' box in the bottom left sidebar.\nThis keeps your key 100% private and secured on your local device!";
     }
     
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
     
     try {
         const response = await fetch(endpoint, {
