@@ -4,10 +4,12 @@ $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
 Write-Host "Listening on port $port... (Chat Logging Enabled)"
 
-# Ensure chat directory exists
+# Ensure chat logic directories exist
 $baseDir = "c:\Users\Shashin\Desktop\ai bas wab sied"
 $chatDir = Join-Path $baseDir "Chat"
+$dbDir = Join-Path $baseDir "Database"
 if (-not (Test-Path $chatDir)) { New-Item -ItemType Directory -Path $chatDir }
+if (-not (Test-Path $dbDir)) { New-Item -ItemType Directory -Path $dbDir }
 
 while ($listener.IsListening) {
     try {
@@ -39,6 +41,18 @@ while ($listener.IsListening) {
             
             $response.StatusCode = 200
             $buffer = [System.Text.Encoding]::UTF8.GetBytes("Logged")
+            $response.ContentLength64 = $buffer.Length
+            $response.OutputStream.Write($buffer, 0, $buffer.Length)
+        } elseif ($request.Url.LocalPath -eq "/database" -and $request.HttpMethod -eq "POST") {
+            $reader = New-Object System.IO.StreamReader($request.InputStream, [System.Text.Encoding]::UTF8)
+            $body = $reader.ReadToEnd()
+            $data = $body | ConvertFrom-Json
+            
+            $dbFile = Join-Path $dbDir "$($data.sessionId).json"
+            [System.IO.File]::WriteAllText($dbFile, $body, [System.Text.Encoding]::UTF8)
+            
+            $response.StatusCode = 200
+            $buffer = [System.Text.Encoding]::UTF8.GetBytes("DB Saved")
             $response.ContentLength64 = $buffer.Length
             $response.OutputStream.Write($buffer, 0, $buffer.Length)
         } else {

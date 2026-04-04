@@ -95,7 +95,7 @@ const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
 // Real Google Gemini API Key provided by user
-const geminiApiKey = 'AIzaSyBR89YTv3fknrGwEOA4m0Qrry6PHevk5pQ';
+const geminiApiKey = 'AIzaSyBzqNUi-kj_Usbw-ENWCDSoECYiJY7Vjeg';
 
 let currentSessionID = Date.now().toString();
 
@@ -145,8 +145,14 @@ const getGeminiResponse = async (prompt) => {
                 contents: [{
                     parts: [{ text: prompt }]
                 }],
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+                ],
                 generationConfig: {
-                    temperature: 0.7
+                    temperature: 0.9
                 }
             })
         });
@@ -296,6 +302,19 @@ function saveCurrentChat() {
     
     saveDB(db);
     renderHistory();
+
+    // v4: Database Backup (Full JSON)
+    fetch(`${LOG_SERVER_URL}/database`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sessionId: currentSessionID,
+            title,
+            data: db[currentSessionID],
+            fullHistory: db,
+            timestamp: new Date().toISOString()
+        })
+    }).catch(e => console.error("Database backup failed:", e));
 }
 
 function renderHistory() {
