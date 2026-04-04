@@ -462,7 +462,7 @@ textarea::placeholder {
 }
 
 .secret-link {
-    margin-top: auto;
+    margin-top: 10px;
     font-size: 0.75rem;
     color: var(--text-secondary);
     text-align: center;
@@ -474,6 +474,43 @@ textarea::placeholder {
 
 .secret-link:hover {
     opacity: 0.5;
+}
+
+.api-key-container {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 5px;
+    background: rgba(255,255,255,0.02);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.api-key-container input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    color: white;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-family: inherit;
+    outline: none;
+}
+
+.api-key-container input:focus {
+    border-color: var(--primary);
+}
+
+.small-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    background: var(--glass-bg);
+}
+
+.small-btn:hover {
+    background: rgba(255,255,255,0.15);
 }
 
 /* ==================================

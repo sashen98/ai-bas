@@ -188,6 +188,25 @@ const welcomeScreen = document.getElementById('welcome-screen');
 const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
+// API Key Settings Logic
+let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+const apiKeyInput = document.getElementById('api-key-input');
+const apiKeySaveBtn = document.getElementById('api-key-save');
+
+if (apiKeyInput && apiKeySaveBtn) {
+    if (geminiApiKey) apiKeyInput.value = geminiApiKey;
+    
+    apiKeySaveBtn.addEventListener('click', () => {
+        const val = apiKeyInput.value.trim();
+        if (val) {
+            localStorage.setItem('gemini_api_key', val);
+            geminiApiKey = val;
+            apiKeySaveBtn.textContent = 'Saved!';
+            setTimeout(() => apiKeySaveBtn.textContent = 'Save Key', 2000);
+        }
+    });
+}
+
 let currentSession = Date.now().toString();
 
 // Auto-resize textarea
@@ -209,8 +228,11 @@ promptInput.addEventListener('keydown', function(e) {
 
 // Real Google Gemini API Logic
 const getGeminiResponse = async (prompt) => {
-    const API_KEY = 'AIzaSyBR89YTv3fknrGwEOA4m0Qrry6PHevk5pQ';
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+    if (!geminiApiKey) {
+        return "⚠️ I need a Google Gemini API Key to work!\n\nPlease generate a free Gemini API Key from Google AI Studio and enter it in the 'Google Gemini API Key...' box in the bottom left sidebar.\nThis keeps your key 100% private and secured on your local device!";
+    }
+    
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
     
     try {
         const response = await fetch(endpoint, {
