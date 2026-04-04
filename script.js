@@ -11,6 +11,8 @@ const authTitle = document.getElementById('auth-title');
 const authSubtitle = document.getElementById('auth-subtitle');
 const authError = document.getElementById('auth-error');
 
+const signoutBtn = document.getElementById('signout-btn');
+
 let isLoginMode = true;
 
 // Check if user is already logged in
@@ -49,7 +51,9 @@ authForm.addEventListener('submit', (e) => {
         if (users[email] && users[email].password === password) {
             localStorage.setItem('nexus_user', email);
             authScreen.style.opacity = '0';
-            setTimeout(() => authScreen.style.display = 'none', 500);
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         } else {
             authError.textContent = 'Invalid email or password.';
         }
@@ -62,10 +66,19 @@ authForm.addEventListener('submit', (e) => {
             localStorage.setItem('nexus_users', JSON.stringify(users));
             localStorage.setItem('nexus_user', email);
             authScreen.style.opacity = '0';
-            setTimeout(() => authScreen.style.display = 'none', 500);
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         }
     }
 });
+
+if (signoutBtn) {
+    signoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('nexus_user');
+        window.location.reload();
+    });
+}
 
 // ==========================================
 // Custom Cursor Logic
@@ -255,21 +268,25 @@ form.addEventListener('submit', async (e) => {
 let memoryDB = null;
 
 function getDB() {
+    const activeUser = localStorage.getItem('nexus_user') || 'anonymous';
     try {
-        const data = localStorage.getItem('nexus_db');
+        const data = localStorage.getItem(`nexus_db_${activeUser}`);
         return data ? JSON.parse(data) : {};
     } catch (e) {
-        // Fallback if localStorage is blocked (e.g. file:/// URL in some browsers)
+        // Fallback for file:/// missing localStorage
         if (!memoryDB) memoryDB = {};
-        return memoryDB;
+        if (!memoryDB[activeUser]) memoryDB[activeUser] = {};
+        return memoryDB[activeUser];
     }
 }
 
 function saveDB(db) {
+    const activeUser = localStorage.getItem('nexus_user') || 'anonymous';
     try {
-        localStorage.setItem('nexus_db', JSON.stringify(db));
+        localStorage.setItem(`nexus_db_${activeUser}`, JSON.stringify(db));
     } catch (e) {
-        memoryDB = db;
+        if (!memoryDB) memoryDB = {};
+        memoryDB[activeUser] = db;
     }
 }
 
