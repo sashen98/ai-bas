@@ -2,14 +2,18 @@ $port = 8080
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
-Write-Host "Listening on port $port... (Chat Logging Enabled)"
+Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+Write-Host " Nexus AI Local Server Powered By Antigravity" -ForegroundColor White -BackgroundColor Blue
+Write-Host " Listening on port $port..." -ForegroundColor Cyan
+Write-Host " All chats and backups will be saved here." -ForegroundColor Gray
+Write-Host "--------------------------------------------------" -ForegroundColor Cyan
 
 # Ensure chat logic directories exist
-$baseDir = "c:\Users\Shashin\Desktop\ai bas wab sied"
+$baseDir = $PSScriptRoot
 $chatDir = Join-Path $baseDir "Chat"
 $dbDir = Join-Path $baseDir "Database"
-if (-not (Test-Path $chatDir)) { New-Item -ItemType Directory -Path $chatDir }
-if (-not (Test-Path $dbDir)) { New-Item -ItemType Directory -Path $dbDir }
+if (-not (Test-Path $chatDir)) { New-Item -ItemType Directory -Path $chatDir | Out-Null }
+if (-not (Test-Path $dbDir)) { New-Item -ItemType Directory -Path $dbDir | Out-Null }
 
 while ($listener.IsListening) {
     try {
@@ -38,6 +42,7 @@ while ($listener.IsListening) {
             $logLine += "-----------------------------------`r`n"
             
             [System.IO.File]::AppendAllText($sessionFile, $logLine, [System.Text.Encoding]::UTF8)
+            Write-Host " [LOG] Received message from Session: $($data.sessionId) ($($data.role))" -ForegroundColor Yellow
             
             $response.StatusCode = 200
             $buffer = [System.Text.Encoding]::UTF8.GetBytes("Logged")
@@ -50,6 +55,7 @@ while ($listener.IsListening) {
             
             $dbFile = Join-Path $dbDir "$($data.sessionId).json"
             [System.IO.File]::WriteAllText($dbFile, $body, [System.Text.Encoding]::UTF8)
+            Write-Host " [DB]  Backup saved for Session: $($data.sessionId)" -ForegroundColor Green
             
             $response.StatusCode = 200
             $buffer = [System.Text.Encoding]::UTF8.GetBytes("DB Saved")
@@ -58,7 +64,7 @@ while ($listener.IsListening) {
         } else {
             $urlPath = $request.Url.LocalPath.Replace("/", "\")
             if ($urlPath -eq "\") { $urlPath = "\index.html" }
-            $localPath = $baseDir + $urlPath
+            $localPath = Join-Path $baseDir $urlPath
 
             if (Test-Path $localPath -PathType Leaf) {
                 $ext = [System.IO.Path]::GetExtension($localPath)
@@ -76,10 +82,11 @@ while ($listener.IsListening) {
                 $response.StatusCode = 200
             } else {
                 $response.StatusCode = 404
+                Write-Host " [404] Not Found: $($request.Url.LocalPath)" -ForegroundColor Red
             }
         }
     } catch {
-        Write-Host "Error: $_"
+        Write-Host " [ERR] Error processing request: $_" -ForegroundColor DarkRed
         $response.StatusCode = 500
     }
     

@@ -1,23 +1,45 @@
 // Configure Remote Logging (GitHub Support)
 let LOG_SERVER_URL = window.location.origin; 
 
-// Initial GitHub/Remote check
+// If on GitHub Pages, only enable remote logging if a custom URL is saved
 if (window.location.hostname.includes('github.io')) {
     const savedUrl = localStorage.getItem('nexus_remote_url');
-    if (savedUrl) {
+    if (savedUrl && savedUrl.startsWith('http')) {
         LOG_SERVER_URL = savedUrl;
-        console.log("Nexus AI: Remote logging active at " + LOG_SERVER_URL);
     } else {
-        const url = prompt("Nexus AI - Remote Logging Setup:\n\nTo save chats to your local machine from GitHub, please enter your Ngrok Public URL (e.g., https://your-id.ngrok-free.app)\n\nIf you don't have one, leave this blank.", "");
-        if (url && url.startsWith('http')) {
-            LOG_SERVER_URL = url;
-            localStorage.setItem('nexus_remote_url', url);
-            alert("Success! Your chats will now be saved locally.");
-        }
+        LOG_SERVER_URL = null; // Disable logging on GitHub by default
     }
 }
 
+// Sidebar Remote Sync UI Connector
+document.addEventListener('DOMContentLoaded', () => {
+    const remoteInput = document.getElementById('remote-url-input');
+    const saveRemoteBtn = document.getElementById('save-remote-btn');
+    
+    if (remoteInput && saveRemoteBtn) {
+        remoteInput.value = localStorage.getItem('nexus_remote_url') || '';
+        
+        saveRemoteBtn.addEventListener('click', () => {
+            const url = remoteInput.value.trim();
+            if (url.startsWith('http')) {
+                localStorage.setItem('nexus_remote_url', url);
+                LOG_SERVER_URL = url;
+                alert("Nexus AI: Connected to local server!");
+                saveCurrentChat(); // Trigger a backup
+            } else if (url === "") {
+                localStorage.removeItem('nexus_remote_url');
+                LOG_SERVER_URL = window.location.hostname.includes('github.io') ? null : window.location.origin;
+                alert("Nexus AI: Local sync disabled.");
+            } else {
+                alert("Please enter a valid URL (starting with http:// or https://)");
+            }
+        });
+    }
+});
+
 async function logChatToServer(sessionId, role, content) {
+    if (!LOG_SERVER_URL || LOG_SERVER_URL === window.location.origin && window.location.hostname.includes('github.io')) return;
+    
     try {
         await fetch(`${LOG_SERVER_URL}/log`, {
             method: 'POST',
@@ -30,7 +52,7 @@ async function logChatToServer(sessionId, role, content) {
             })
         });
     } catch (e) {
-        console.error('Failed to log chat:', e);
+        // Silent fail for logging
     }
 }
 
@@ -119,23 +141,18 @@ promptInput.addEventListener('keydown', function(e) {
 // Helper to discover what models your key actually supports
 const listAvailableModels = async () => {
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiApiKey}`);
         const data = await res.json();
-        console.log("Nexus AI - Available Models for your Key:", data.models?.map(m => m.name));
         return data.models?.map(m => m.name) || [];
     } catch (e) {
-        console.error("Nexus AI - Failed to list models:", e);
         return [];
     }
 };
 
 // Real Google Gemini API Logic
 const getGeminiResponse = async (prompt) => {
-    if (!geminiApiKey) {
-        return "⚠️ I need a Google Gemini API Key to work!\n\nPlease generate a free Gemini API Key from Google AI Studio and enter it in the 'Google Gemini API Key...' box in the bottom left sidebar.\nThis keeps your key 100% private and secured on your local device!";
-    }
-    
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+    // Stable v1 endpoint for gemini-1.5-flash
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
     
     try {
         const response = await fetch(endpoint, {
@@ -152,34 +169,39 @@ const getGeminiResponse = async (prompt) => {
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
                 ],
                 generationConfig: {
-                    temperature: 0.9
+                    temperature: 0.9,
+                    topP: 1,
+                    topK: 1,
+                    maxOutputTokens: 2048,
                 }
             })
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("API response error:", response.status, errorData);
-            
-            if (response.status === 403) {
-                await listAvailableModels();
-                return "⚠️ API Error 403: Forbidden. Your API Key may be invalid or unauthorized for this model. Please check Google AI Studio.";
-            } else if (response.status === 404) {
-                const available = await listAvailableModels();
-                return `⚠️ API Error 404: Not Found. The model endpoint is unavailable. \n\nAvailable models for your key: ${available.slice(0,3).join(', ')}... (check F12 Console for full list)`;
+            console.error("API response error:", response.status, data);
+            if (response.status === 404) {
+                 return "⚠️ API Error 404: The model name you're using (gemini-1.5-flash) might not be available for your specific key. Please try using 'gemini-pro'.";
             }
-            return `Sorry, I encountered an error (HTTP ${response.status}). Response: ${JSON.stringify(errorData.error?.message || errorData)}`;
+            if (response.status === 403) {
+                 return "⚠️ API Error 403: Forbidden. Your API Key might have restrictions or is not authorized for this specific model.";
+            }
+            return `⚠️ Error ${response.status}: ${data.error?.message || "Internal API Error"}`;
         }
         
-        const data = await response.json();
-        if (data.candidates && data.candidates.length > 0) {
+        if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
             return data.candidates[0].content.parts[0].text;
+        } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+             return `⚠️ Response Blocked: ${data.promptFeedback.blockReason}. Even with filters off, some prompts are restricted by Google's safety policy.`;
+        } else if (data.candidates && data.candidates[0].finishReason === 'SAFETY') {
+            return "⚠️ Response blocked by safety filters.";
         } else {
-            return "Sorry, the AI did not return a valid response.";
+            return "Sorry, the AI did not return a valid response. Please try again.";
         }
     } catch (error) {
         console.error("Fetch Error:", error);
-        return "Network error: Unable to connect to Gemini API.";
+        return "Network error: Unable to connect to Gemini API. Check your internet connection.";
     }
 };
 
@@ -238,7 +260,6 @@ function typeText(element, text) {
             clearInterval(interval);
             element.classList.remove('typing-cursor');
             saveCurrentChat();
-            logChatToServer(currentSessionID, 'ai', text);
         }
     }, 25); // Typing speed
 }
@@ -260,7 +281,10 @@ form.addEventListener('submit', async (e) => {
     // 2. Fetch Real API Response
     const response = await getGeminiResponse(text);
     
-    // 3. Add AI Message with typing animation
+    // 3. Log AI Response immediately (for persistence)
+    logChatToServer(currentSessionID, 'ai', response);
+
+    // 4. Add AI Message with typing animation
     appendMessage('ai', response, true);
 });
 
@@ -304,17 +328,19 @@ function saveCurrentChat() {
     renderHistory();
 
     // v4: Database Backup (Full JSON)
-    fetch(`${LOG_SERVER_URL}/database`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            sessionId: currentSessionID,
-            title,
-            data: db[currentSessionID],
-            fullHistory: db,
-            timestamp: new Date().toISOString()
-        })
-    }).catch(e => console.error("Database backup failed:", e));
+    if (LOG_SERVER_URL && (!window.location.hostname.includes('github.io') || localStorage.getItem('nexus_remote_url'))) {
+        fetch(`${LOG_SERVER_URL}/database`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: currentSessionID,
+                title,
+                data: db[currentSessionID],
+                fullHistory: db,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(e => {});
+    }
 }
 
 function renderHistory() {
