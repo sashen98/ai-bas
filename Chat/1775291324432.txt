@@ -1,6 +1,0 @@
-[2026-04-04T08:29:55.362Z] USER: Emoji Test: ??
------------------------------------
-
-[2026-04-04T08:29:58.809Z] AI: ?? API Error 404: Not Found. The model endpoint is unavailable. Try switching from 'v1' to 'v1beta' in script.js line 109.
------------------------------------
-
