@@ -170,6 +170,16 @@ function getStoredApiKey() {
 }
 
 function promptForApiKey() {
+    const key = prompt(
+        '🔑 Nexus AI Desktop — API Key Required\n\n' +
+        'Your current API Key is either missing or restricted (gives 403 Forbidden Error when running as a local app).\n' +
+        'Please enter a Google Gemini API Key that is UNRESTRICTED to continue.\n\n' +
+        'Get a free key at: https://aistudio.google.com/app/apikey'
+    );
+    if (key && key.startsWith('AIza')) {
+        localStorage.setItem('nexus_user_api_key', key);
+        return key;
+    }
     return null;
 }
 
@@ -195,10 +205,13 @@ promptInput.addEventListener('keydown', function(e) {
 // ==========================================
 // Gemini API — Logic
 // ==========================================
-const getGeminiResponse = async (prompt) => {
+const getGeminiResponse = async (promptText) => {
 
     let apiKey = getStoredApiKey();
-    if (!apiKey) return '⚠️ No API key available.';
+    if (!apiKey) {
+        apiKey = promptForApiKey();
+        if (!apiKey) return '⚠️ No API key available. Please refresh to try again.';
+    }
 
     const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -207,7 +220,7 @@ const getGeminiResponse = async (prompt) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
+                contents: [{ parts: [{ text: promptText }] }],
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
@@ -222,11 +235,15 @@ const getGeminiResponse = async (prompt) => {
 
         if (!response.ok) {
             console.error('API response error:', response.status, data);
-            // If key is invalid/forbidden, clear it so user is prompted again
-            if (response.status === 400 || response.status === 403) {
+            
+            // If domain restricted or invalid key, clear it and prompt for another
+            if (response.status === 403 || response.status === 400) {
                 localStorage.removeItem('nexus_user_api_key');
-                return `⚠️ API Error ${response.status}: ${data.error?.message || 'Invalid key. Key cleared — refresh to re-enter.'}`;
+                const newKey = promptForApiKey();
+                if (newKey) return "🔄 Trying again with new key... please submit your prompt again.";
+                return `⚠️ API Error ${response.status}: Your current key is restricted. Please provide an unrestricted key.`;
             }
+            
             return `⚠️ Error ${response.status}: ${data.error?.message || 'Internal API Error'}`;
         }
 
