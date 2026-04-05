@@ -117,7 +117,7 @@ const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
 // Real Google Gemini API Key provided by user
-const geminiApiKey = 'AIzaSyBzqNUi-kj_Usbw-ENWCDSoECYiJY7Vjeg';
+const geminiApiKey = 'AIzaSyDqwv1G4lyX5dUn-AwV6yRevQlXkR2_Ias';
 
 let currentSessionID = Date.now().toString();
 
