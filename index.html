@@ -32,8 +32,19 @@
                 <div class="logo"></div>
                 <h1>Nexus AI</h1>
             </div>
-            <button id="new-chat-btn" class="glass-btn primary-btn">+ New Chat</button>
-            
+            <div class="sidebar-actions">
+                <button id="new-chat-btn" class="glass-btn primary-btn">+ New Chat</button>
+                <button id="new-folder-btn" class="glass-btn folder-btn" title="New Folder">📁</button>
+            </div>
+
+            <!-- Folders Section -->
+            <div class="folders-section" id="folders-section">
+                <p class="history-title">📂 Folders</p>
+                <ul id="folder-list">
+                    <!-- Folders injected here -->
+                </ul>
+            </div>
+
             <div class="history" id="history-container">
                 <p class="history-title">Recent Chats</p>
                 <ul id="history-list">
@@ -55,9 +66,12 @@
             <!-- Header -->
             <header class="chat-header glass-panel">
                 <h2>Playground</h2>
-                <div class="status">
-                    <span class="status-dot"></span>
-                    <span class="status-text">AI is Ready</span>
+                <div class="header-actions">
+                    <button id="save-computer-btn" class="glass-btn small-btn" title="Save chat to your computer">💾 Save to Computer</button>
+                    <div class="status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">AI is Ready</span>
+                    </div>
                 </div>
             </header>
 

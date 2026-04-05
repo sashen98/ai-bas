@@ -117,29 +117,11 @@ const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
 // ==========================================
-// Secure API Key Handling
+// Secure API Key Handling (v5 Unrestricted)
 // ==========================================
-// When running locally → calls the Node.js proxy (/api/chat) — key stays in .env
-// When on GitHub Pages → key is entered by the user and stored in their localStorage only
+// Your new "Superior" API Key is hardcoded here so GitHub site works instantly!
+const geminiApiKey = 'AIzaSyBzqNUi-kj_Usbw-ENWCDSoECYiJY7Vjeg';
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-function getStoredApiKey() {
-    return localStorage.getItem('nexus_user_api_key');
-}
-
-function promptForApiKey() {
-    const key = prompt(
-        '🔑 Nexus AI — Enter your Gemini API Key to continue.\n\n' +
-        'Your key is saved only in YOUR browser (localStorage).\n' +
-        'It is never sent to any third party.\n\n' +
-        'Get a free key at: https://aistudio.google.com/app/apikey'
-    );
-    if (key && key.startsWith('AIza')) {
-        localStorage.setItem('nexus_user_api_key', key);
-        return key;
-    }
-    return null;
-}
 
 let currentSessionID = Date.now().toString();
 
@@ -164,32 +146,8 @@ promptInput.addEventListener('keydown', function(e) {
 // Gemini API — Secure Dual-Mode Logic
 // ==========================================
 const getGeminiResponse = async (prompt) => {
-
-    // ---- LOCAL MODE: Call secure Node.js proxy (key never in browser) ----
-    if (IS_LOCAL) {
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-            const data = await response.json();
-            if (!response.ok) return `⚠️ Proxy Error ${response.status}: ${data.error || 'Unknown error'}`;
-            return data.reply || 'No response from proxy.';
-        } catch (err) {
-            console.error('[Proxy Error]', err);
-            return '⚠️ Could not reach local proxy. Is proxy-server.js running? (node proxy-server.js)';
-        }
-    }
-
-    // ---- GITHUB PAGES MODE: Use key from localStorage (user-provided) ----
-    let apiKey = getStoredApiKey();
-    if (!apiKey) {
-        apiKey = promptForApiKey();
-        if (!apiKey) return '⚠️ No API key provided. Please refresh and enter your Gemini key.';
-    }
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // ---- LOCAL MODE: Node.js Proxy (optional) / GITHUB MODE: Hardcoded Key ----
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
     try {
         const response = await fetch(endpoint, {
@@ -203,34 +161,30 @@ const getGeminiResponse = async (prompt) => {
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
                 ],
-                generationConfig: { temperature: 0.9, topP: 1, topK: 1, maxOutputTokens: 2048 }
+                generationConfig: { 
+                    temperature: 0.9, 
+                    topP: 1, 
+                    topK: 1, 
+                    maxOutputTokens: 2048 
+                }
             })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('API response error:', response.status, data);
-            // If key is invalid/forbidden, clear it so user is prompted again
-            if (response.status === 400 || response.status === 403) {
-                localStorage.removeItem('nexus_user_api_key');
-                return `⚠️ API Error ${response.status}: ${data.error?.message || 'Invalid key. Key cleared — refresh to re-enter.'}`;
-            }
+            console.error('API Error:', response.status, data);
             return `⚠️ Error ${response.status}: ${data.error?.message || 'Internal API Error'}`;
         }
 
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
             return data.candidates[0].content.parts[0].text;
-        } else if (data.promptFeedback?.blockReason) {
-            return `⚠️ Response Blocked: ${data.promptFeedback.blockReason}`;
-        } else if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-            return '⚠️ Response blocked by safety filters.';
         } else {
-            return 'Sorry, the AI did not return a valid response. Please try again.';
+            return `⚠️ AI response blocked or invalid. (Safety check might still hit Google's hard-limit). JSON: ${JSON.stringify(data)}`;
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        return 'Network error: Unable to connect to Gemini API. Check your internet connection.';
+        return 'Network error: Connect to local proxy or check internet.';
     }
 };
 
@@ -372,21 +326,153 @@ function saveCurrentChat() {
     }
 }
 
+
+newChatBtn.addEventListener('click', () => {
+    currentSessionID = Date.now().toString();
+    messagesContainer.innerHTML = `
+        <div class="welcome-screen" id="welcome-screen">
+            <h1>How can I help you today?</h1>
+            <p>Enter a prompt below and watch the magic unfold.</p>
+        </div>`;
+});
+
+// Load history on initial startup
+try { window.onload = () => { renderHistory(); renderFolders(); }; } catch(e) {}
+
+
+// ==========================================
+// 📁 Folder System
+// ==========================================
+
+const newFolderBtn = document.getElementById('new-folder-btn');
+const folderList = document.getElementById('folder-list');
+
+function getFolders() {
+    try {
+        return JSON.parse(localStorage.getItem('nexus_folders') || '{}');
+    } catch(e) { return {}; }
+}
+
+function saveFolders(folders) {
+    localStorage.setItem('nexus_folders', JSON.stringify(folders));
+}
+
+function renderFolders() {
+    const folders = getFolders();
+    const db = getDB();
+    folderList.innerHTML = '';
+
+    Object.keys(folders).forEach(folderId => {
+        const folder = folders[folderId];
+        const li = document.createElement('li');
+        li.className = 'folder-item';
+        li.dataset.folderId = folderId;
+
+        // Chat items inside folder
+        const chatsHTML = (folder.chats || []).map(sessId => {
+            const chat = db[sessId];
+            if (!chat) return '';
+            return `<div class="folder-chat-item" data-session="${sessId}">${chat.title || 'Untitled'}</div>`;
+        }).join('');
+
+        li.innerHTML = `
+            <div class="folder-header">
+                <span class="folder-icon">📁</span>
+                <span class="folder-name">${folder.name}</span>
+                <span class="folder-arrow">▶</span>
+            </div>
+            <div class="folder-chats">
+                ${chatsHTML || '<span style="font-size:0.8rem;color:var(--text-secondary);padding:4px 8px;">Empty folder</span>'}
+            </div>`;
+
+        // Toggle open/close
+        li.querySelector('.folder-header').addEventListener('click', (e) => {
+            if (e.target.closest('.folder-actions')) return;
+            li.classList.toggle('open');
+        });
+
+        // Click chat inside folder to load it
+        li.querySelectorAll('.folder-chat-item').forEach(item => {
+            item.addEventListener('click', () => loadChat(item.dataset.session));
+        });
+
+        folderList.appendChild(li);
+    });
+}
+
+// Create new folder
+newFolderBtn.addEventListener('click', () => {
+    const name = prompt('📁 Enter folder name:');
+    if (!name || !name.trim()) return;
+
+    const folders = getFolders();
+    const folderId = 'folder_' + Date.now();
+    folders[folderId] = { name: name.trim(), chats: [] };
+    saveFolders(folders);
+    renderFolders();
+
+    // Ask if they want to add current chat to folder
+    if (currentSessionID && messagesContainer.querySelector('.message')) {
+        const add = confirm(`Add current chat to "${name.trim()}"?`);
+        if (add) {
+            folders[folderId].chats.push(currentSessionID);
+            saveFolders(folders);
+            renderFolders();
+        }
+    }
+});
+
+// Right-click context menu on history items to move to folder
+function addContextMenuToHistory(li, sessionId) {
+    li.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const folders = getFolders();
+        const folderNames = Object.keys(folders);
+
+        if (folderNames.length === 0) {
+            alert('No folders yet. Click 📁 to create one first!');
+            return;
+        }
+
+        const options = folderNames.map(id => folders[id].name).join('\n');
+        const choice = prompt(`Move "${sessTitle(sessionId)}" to folder:\n\n${folderNames.map((id, i) => `${i+1}. ${folders[id].name}`).join('\n')}\n\nEnter number:`);
+        const idx = parseInt(choice) - 1;
+
+        if (!isNaN(idx) && folderNames[idx]) {
+            const fId = folderNames[idx];
+            // Remove from other folders first
+            folderNames.forEach(id => {
+                folders[id].chats = folders[id].chats.filter(c => c !== sessionId);
+            });
+            folders[fId].chats.push(sessionId);
+            saveFolders(folders);
+            renderFolders();
+        }
+    });
+}
+
+function sessTitle(sessionId) {
+    const db = getDB();
+    return db[sessionId]?.title || 'Untitled';
+}
+
 function renderHistory() {
     const db = getDB();
     historyList.innerHTML = '';
-    
+
     const sessions = Object.keys(db).sort((a,b) => db[b].timestamp - db[a].timestamp);
-    
+
     sessions.forEach(sessId => {
         const li = document.createElement('li');
         li.textContent = db[sessId].title;
+        li.title = 'Click to load · Right-click to move to folder';
         li.addEventListener('click', () => loadChat(sessId));
-        
+        addContextMenuToHistory(li, sessId);
+
         // Apply hover cursor interaction dynamically
         li.addEventListener('mouseenter', () => cursorRing.classList.add('active'));
         li.addEventListener('mouseleave', () => cursorRing.classList.remove('active'));
-        
+
         historyList.appendChild(li);
     });
 }
@@ -400,14 +486,49 @@ function loadChat(sessionId) {
     }
 }
 
-newChatBtn.addEventListener('click', () => {
-    currentSessionID = Date.now().toString();
-    messagesContainer.innerHTML = `
-        <div class="welcome-screen" id="welcome-screen">
-            <h1>How can I help you today?</h1>
-            <p>Enter a prompt below and watch the magic unfold.</p>
-        </div>`;
-});
 
-// Load history on initial startup
-try { window.onload = renderHistory; } catch(e) {}
+// ==========================================
+// 💾 Save Chat to Computer (Download)
+// ==========================================
+
+document.getElementById('save-computer-btn').addEventListener('click', () => {
+    const messages = messagesContainer.querySelectorAll('.message');
+
+    if (messages.length === 0) {
+        alert('No chat to save yet. Start a conversation first!');
+        return;
+    }
+
+    let chatText = `NEXUS AI — Chat Export\n`;
+    chatText += `Date: ${new Date().toLocaleString()}\n`;
+    chatText += `Session: ${currentSessionID}\n`;
+    chatText += `${'='.repeat(50)}\n\n`;
+
+    messages.forEach(msg => {
+        const role = msg.classList.contains('user') ? 'YOU' : 'NEXUS AI';
+        const content = msg.querySelector('.msg-content')?.textContent || '';
+        chatText += `[${role}]\n${content}\n\n${'—'.repeat(40)}\n\n`;
+    });
+
+    // Create download
+    const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.href = url;
+    a.download = `nexus-chat-${timestamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Visual feedback
+    const btn = document.getElementById('save-computer-btn');
+    const original = btn.textContent;
+    btn.textContent = '✅ Saved!';
+    btn.style.color = '#00e676';
+    setTimeout(() => {
+        btn.textContent = original;
+        btn.style.color = '';
+    }, 2000);
+});

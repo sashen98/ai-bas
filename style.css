@@ -515,6 +515,132 @@ textarea::placeholder {
 }
 
 /* ==================================
+   Sidebar Actions Row
+=================================== */
+.sidebar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.sidebar-actions #new-chat-btn {
+    flex: 1;
+}
+
+.folder-btn {
+    padding: 12px 14px;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* ==================================
+   Folder System
+=================================== */
+.folders-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.folders-section ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.folder-item {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    transition: all 0.3s;
+    background: rgba(255,255,255,0.02);
+}
+
+.folder-header:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+}
+
+.folder-header .folder-icon { font-size: 1rem; }
+.folder-header .folder-name { flex: 1; font-weight: 500; }
+.folder-arrow {
+    font-size: 0.7rem;
+    transition: transform 0.3s;
+    opacity: 0.5;
+}
+
+.folder-item.open .folder-arrow {
+    transform: rotate(90deg);
+}
+
+.folder-chats {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 8px 8px 8px;
+    background: rgba(0,0,0,0.15);
+}
+
+.folder-item.open .folder-chats {
+    display: flex;
+}
+
+.folder-chat-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s;
+}
+
+.folder-chat-item:hover {
+    background: rgba(94,106,210,0.15);
+    color: var(--text-primary);
+    padding-left: 16px;
+}
+
+/* ==================================
+   Chat Header Actions
+=================================== */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+#save-computer-btn {
+    background: rgba(94,106,210,0.1);
+    border-color: rgba(94,106,210,0.3);
+    color: var(--accent);
+    font-size: 0.8rem;
+    padding: 7px 14px;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+#save-computer-btn:hover {
+    background: rgba(94,106,210,0.25);
+    box-shadow: 0 4px 15px rgba(94,106,210,0.3);
+    transform: translateY(-1px);
+}
+
+
+/* ==================================
    Authentication Screen
 =================================== */
 .auth-overlay {
