@@ -146,7 +146,7 @@ promptInput.addEventListener('keydown', function(e) {
 // Gemini API — Secure Dual-Mode Logic
 // ==========================================
 const getGeminiResponse = async (prompt) => {
-    // ---- LOCAL MODE: Node.js Proxy (optional) / GITHUB MODE: Hardcoded Key ----
+    // ---- SUPERIOR MODE: Direct API Call with Security Bypassed ----
     const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
     try {
@@ -173,18 +173,18 @@ const getGeminiResponse = async (prompt) => {
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('API Error:', response.status, data);
-            return `⚠️ Error ${response.status}: ${data.error?.message || 'Internal API Error'}`;
+            console.error('Superior AI Error:', response.status, data);
+            return `⚠️ Error ${response.status}: ${data.error?.message || 'Access Restricted. Please check API settings.'}`;
         }
 
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
             return data.candidates[0].content.parts[0].text;
         } else {
-            return `⚠️ AI response blocked or invalid. (Safety check might still hit Google's hard-limit). JSON: ${JSON.stringify(data)}`;
+            return `⚠️ AI response blocked by Google's hard-limit. (Safety is set to NONE). JSON: ${JSON.stringify(data)}`;
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        return 'Network error: Connect to local proxy or check internet.';
+        return 'Network error: Check your internet or local proxy.';
     }
 };
 
