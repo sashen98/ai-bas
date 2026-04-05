@@ -116,8 +116,30 @@ const welcomeScreen = document.getElementById('welcome-screen');
 const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
-// Real Google Gemini API Key provided by user
-const geminiApiKey = 'AIzaSyDqwv1G4lyX5dUn-AwV6yRevQlXkR2_Ias';
+// ==========================================
+// Secure API Key Handling
+// ==========================================
+// When running locally → calls the Node.js proxy (/api/chat) — key stays in .env
+// When on GitHub Pages → key is entered by the user and stored in their localStorage only
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+function getStoredApiKey() {
+    return localStorage.getItem('nexus_user_api_key');
+}
+
+function promptForApiKey() {
+    const key = prompt(
+        '🔑 Nexus AI — Enter your Gemini API Key to continue.\n\n' +
+        'Your key is saved only in YOUR browser (localStorage).\n' +
+        'It is never sent to any third party.\n\n' +
+        'Get a free key at: https://aistudio.google.com/app/apikey'
+    );
+    if (key && key.startsWith('AIza')) {
+        localStorage.setItem('nexus_user_api_key', key);
+        return key;
+    }
+    return null;
+}
 
 let currentSessionID = Date.now().toString();
 
@@ -138,70 +160,77 @@ promptInput.addEventListener('keydown', function(e) {
     }
 });
 
-// Helper to discover what models your key actually supports
-const listAvailableModels = async () => {
-    try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiApiKey}`);
-        const data = await res.json();
-        return data.models?.map(m => m.name) || [];
-    } catch (e) {
-        return [];
-    }
-};
-
-// Real Google Gemini API Logic
+// ==========================================
+// Gemini API — Secure Dual-Mode Logic
+// ==========================================
 const getGeminiResponse = async (prompt) => {
-    // Stable v1 endpoint for gemini-1.5-flash
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-    
+
+    // ---- LOCAL MODE: Call secure Node.js proxy (key never in browser) ----
+    if (IS_LOCAL) {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            const data = await response.json();
+            if (!response.ok) return `⚠️ Proxy Error ${response.status}: ${data.error || 'Unknown error'}`;
+            return data.reply || 'No response from proxy.';
+        } catch (err) {
+            console.error('[Proxy Error]', err);
+            return '⚠️ Could not reach local proxy. Is proxy-server.js running? (node proxy-server.js)';
+        }
+    }
+
+    // ---- GITHUB PAGES MODE: Use key from localStorage (user-provided) ----
+    let apiKey = getStoredApiKey();
+    if (!apiKey) {
+        apiKey = promptForApiKey();
+        if (!apiKey) return '⚠️ No API key provided. Please refresh and enter your Gemini key.';
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
+                contents: [{ parts: [{ text: prompt }] }],
                 safetySettings: [
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
                 ],
-                generationConfig: {
-                    temperature: 0.9,
-                    topP: 1,
-                    topK: 1,
-                    maxOutputTokens: 2048,
-                }
+                generationConfig: { temperature: 0.9, topP: 1, topK: 1, maxOutputTokens: 2048 }
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
-            console.error("API response error:", response.status, data);
-            if (response.status === 404) {
-                 return "⚠️ API Error 404: The model name you're using (gemini-1.5-flash) might not be available for your specific key. Please try using 'gemini-pro'.";
+            console.error('API response error:', response.status, data);
+            // If key is invalid/forbidden, clear it so user is prompted again
+            if (response.status === 400 || response.status === 403) {
+                localStorage.removeItem('nexus_user_api_key');
+                return `⚠️ API Error ${response.status}: ${data.error?.message || 'Invalid key. Key cleared — refresh to re-enter.'}`;
             }
-            if (response.status === 403) {
-                 return "⚠️ API Error 403: Forbidden. Your API Key might have restrictions or is not authorized for this specific model.";
-            }
-            return `⚠️ Error ${response.status}: ${data.error?.message || "Internal API Error"}`;
+            return `⚠️ Error ${response.status}: ${data.error?.message || 'Internal API Error'}`;
         }
-        
-        if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
             return data.candidates[0].content.parts[0].text;
-        } else if (data.promptFeedback && data.promptFeedback.blockReason) {
-             return `⚠️ Response Blocked: ${data.promptFeedback.blockReason}. Even with filters off, some prompts are restricted by Google's safety policy.`;
-        } else if (data.candidates && data.candidates[0].finishReason === 'SAFETY') {
-            return "⚠️ Response blocked by safety filters.";
+        } else if (data.promptFeedback?.blockReason) {
+            return `⚠️ Response Blocked: ${data.promptFeedback.blockReason}`;
+        } else if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+            return '⚠️ Response blocked by safety filters.';
         } else {
-            return "Sorry, the AI did not return a valid response. Please try again.";
+            return 'Sorry, the AI did not return a valid response. Please try again.';
         }
     } catch (error) {
-        console.error("Fetch Error:", error);
-        return "Network error: Unable to connect to Gemini API. Check your internet connection.";
+        console.error('Fetch Error:', error);
+        return 'Network error: Unable to connect to Gemini API. Check your internet connection.';
     }
 };
 
