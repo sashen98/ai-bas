@@ -1,11 +1,13 @@
 [Setup]
 AppName=Nexus AI
-AppVersion=1.1.0
+AppVersion=2.0.0
 AppPublisher=Nexus AI Ltd.
 DefaultDirName={localappdata}\Programs\NexusAI
 DefaultGroupName=Nexus AI
 OutputDir=.
 OutputBaseFilename=NexusAI-Setup
+WizardImageFile=wiz.bmp
+WizardSmallImageFile=wiz_small.bmp
 Compression=lzma2/ultra
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -19,6 +21,7 @@ Source: "avatar.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "avatar.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: "manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "sw.js"; DestDir: "{app}"; Flags: ignoreversion
+Source: "app_data.pak"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{userdesktop}\Nexus AI"; Filename: "{code:GetEdgeLocation}"; Parameters: "--app=""file:///{app}/index.html"""; IconFilename: "{app}\avatar.ico"

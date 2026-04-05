@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nexus-ai-pwa-v4';
+const CACHE_NAME = 'nexus-ai-pwa-v5';
 const ASSETS = [
     './',
     './index.html',
