@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
     <!-- Custom Cursor -->
@@ -57,6 +58,13 @@
                 <p class="history-title">Local Sync (Ngrok)</p>
                 <input type="text" id="remote-url-input" placeholder="https://..." style="width:100%;">
                 <button id="save-remote-btn" class="glass-btn small-btn" style="width:100%; margin-top:5px;">Connect</button>
+            </div>
+
+            <!-- App Installation -->
+            <div class="api-key-container">
+                <p class="history-title">App Actions</p>
+                <button id="install-app-btn" class="glass-btn small-btn" style="width:100%; display:none; background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; font-weight: bold; margin-bottom: 5px;">⬇️ Install App</button>
+                <button id="uninstall-info-btn" class="glass-btn small-btn" style="width:100%; display:none; background: rgba(255,50,50,0.2); color: #ffcccc;">🗑️ Uninstall App</button>
             </div>
 
         </aside>

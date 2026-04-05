@@ -117,11 +117,61 @@ const historyList = document.getElementById('history-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 
 // ==========================================
-// Secure API Key Handling (v5 Unrestricted)
+// PWA Installation & Service Worker
 // ==========================================
-// Your new "Superior" API Key is hardcoded here so GitHub site works instantly!
-const geminiApiKey = 'AIzaSyBzqNUi-kj_Usbw-ENWCDSoECYiJY7Vjeg';
-const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW reg error:', err));
+    });
+}
+
+let deferredPrompt;
+const installBtn = document.getElementById('install-app-btn');
+const uninstallBtn = document.getElementById('uninstall-info-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted install');
+            }
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        }
+    });
+}
+
+// Check if app is running in installed mode (PWA standalone)
+if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    if (installBtn) installBtn.style.display = 'none';
+    if (uninstallBtn) {
+        uninstallBtn.style.display = 'block';
+        uninstallBtn.addEventListener('click', () => {
+            alert('To uninstall Nexus AI:\n\n1. Click the three dots (⋮) in the top right corner of the app window.\n2. Select "Uninstall Nexus AI".\n3. Click "Remove".');
+        });
+    }
+}
+
+// ==========================================
+// Secure API Key Handling
+// ==========================================
+const HARDCODED_KEY = 'AIzaSyBbwuvyio2GFB_8W1uCyX7YzKKveUkuuAc';
+
+function getStoredApiKey() {
+    return localStorage.getItem('nexus_user_api_key') || HARDCODED_KEY;
+}
+
+function promptForApiKey() {
+    return null;
+}
 
 let currentSessionID = Date.now().toString();
 
@@ -143,11 +193,14 @@ promptInput.addEventListener('keydown', function(e) {
 });
 
 // ==========================================
-// Gemini API — Secure Dual-Mode Logic
+// Gemini API — Logic
 // ==========================================
 const getGeminiResponse = async (prompt) => {
-    // ---- SUPERIOR MODE: Direct API Call with Security Bypassed ----
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+
+    let apiKey = getStoredApiKey();
+    if (!apiKey) return '⚠️ No API key available.';
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     try {
         const response = await fetch(endpoint, {
@@ -161,30 +214,34 @@ const getGeminiResponse = async (prompt) => {
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
                 ],
-                generationConfig: { 
-                    temperature: 0.9, 
-                    topP: 1, 
-                    topK: 1, 
-                    maxOutputTokens: 2048 
-                }
+                generationConfig: { temperature: 0.9, topP: 1, topK: 1, maxOutputTokens: 2048 }
             })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('Superior AI Error:', response.status, data);
-            return `⚠️ Error ${response.status}: ${data.error?.message || 'Access Restricted. Please check API settings.'}`;
+            console.error('API response error:', response.status, data);
+            // If key is invalid/forbidden, clear it so user is prompted again
+            if (response.status === 400 || response.status === 403) {
+                localStorage.removeItem('nexus_user_api_key');
+                return `⚠️ API Error ${response.status}: ${data.error?.message || 'Invalid key. Key cleared — refresh to re-enter.'}`;
+            }
+            return `⚠️ Error ${response.status}: ${data.error?.message || 'Internal API Error'}`;
         }
 
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
             return data.candidates[0].content.parts[0].text;
+        } else if (data.promptFeedback?.blockReason) {
+            return `⚠️ Response Blocked: ${data.promptFeedback.blockReason}`;
+        } else if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+            return '⚠️ Response blocked by safety filters.';
         } else {
-            return `⚠️ AI response blocked by Google's hard-limit. (Safety is set to NONE). JSON: ${JSON.stringify(data)}`;
+            return 'Sorry, the AI did not return a valid response. Please try again.';
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        return 'Network error: Check your internet or local proxy.';
+        return 'Network error: Unable to connect to Gemini API. Check your internet connection.';
     }
 };
 
