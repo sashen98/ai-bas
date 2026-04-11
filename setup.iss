@@ -6,6 +6,7 @@ DefaultDirName={localappdata}\Programs\NexusAI
 DefaultGroupName=Nexus AI
 OutputDir=.
 OutputBaseFilename=NexusAI-Setup
+SetupIconFile=setup.ico
 WizardImageFile=wiz.bmp
 WizardSmallImageFile=wiz_small.bmp
 Compression=lzma2/ultra
